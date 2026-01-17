@@ -2,11 +2,11 @@ package engine
 
 import (
 	"fmt"
-	. "math"
 	"os"
 	"strings"
 	"sync"
 	"time"
+	"math/rand/v2"
 
 	"golang.org/x/term"
 )
@@ -14,7 +14,10 @@ import (
 var wg sync.WaitGroup
 
 var FPS = 60
+var DEALAY = 50
 var SHOWFPS = true
+
+var Scale = 8.0
 
 const Aspect = 2.0
 
@@ -31,8 +34,6 @@ func getTerminalSize() (int, int){
 func Start() {
 	width, height := getTerminalSize()
 
-
-	
 	screan := make(Screen, height)
     for i := range screan {
         screan[i] = make([]string, width)
@@ -40,56 +41,16 @@ func Start() {
 
 	clearScrean := makeClearScrean(screan)
 	screan = clearScrean
-
-	screan.addLine(3,3,13,13)
-	screan.addRect(30,30, 40,40)
-
+	/*
+	screan.addLine(3 * Aspect,3,13 * Aspect,13)
+	screan.addRect(30 * Aspect,30, 40 * Aspect,40)
+	screan.addSquare(5 * Aspect,5,4, true)
+	*/
 	wg.Add(1)
 	go updateStream(&screan)
 
 	defer wg.Wait()
 	
-}
-
-func (s Screen) addPoint(x, y int) {
-    renderX := int(float64(x) * Aspect)
-
-    if y >= 0 && y < len(s) && renderX >= 0 && renderX < len(s[0]) {
-        s[y][renderX] = "@" 
-    }
-}
-
-func (s Screen) addLine(startX, startY, endX, endY int) {
-	dx := Abs(float64(endX - startX))
-	dy := Abs(float64(endY - startY))
-	sx := sign(endX-startX)
-	sy := sign(endY-startY)
-	err := dx - dy
-
-	x, y := startX, startY
-
-	for  {
-		s.addPoint(x,y)
-		if x == endX && y == endY {
-			break
-		}
-		e2 := 2 * err
-		if e2 > -dy {
-			err -= dy
-			x += sx
-		}
-		if e2 < dx {
-			err += dx
-			y += sy
-		}
-	}
-}
-
-func (s Screen) addRect(x0,y0,x1,y1 int) {
-	s.addLine(x0, y0, x1, y0)
-	s.addLine(x0, y0, x0, y1)
-	s.addLine(x1, y0, x1, y1)
-	s.addLine(x0, y1, x1, y1)
 }
 
 func (s Screen) drow() {
@@ -120,6 +81,18 @@ func updateStream(s *Screen) {
 	
 	frames := 0
 	fpsDisplay := 0
+	angleX, angleY, angleZ := 0.0, 0.0, 0.0
+
+	vertices := []Point3D{
+        {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
+        {-1, -1, 1}, {1, -1, 1}, {1, 1, 1}, {-1, 1, 1},
+    }
+    
+    edges := [][2]int{
+        {0, 1}, {1, 2}, {2, 3}, {3, 0},
+        {4, 5}, {5, 6}, {6, 7}, {7, 4},
+        {0, 4}, {1, 5}, {2, 6}, {3, 7},
+    }
 
 	for {
 		select {
@@ -128,6 +101,23 @@ func updateStream(s *Screen) {
 			frames = 0
 		default:
 			frames++
+			min := 1
+			max := 6
+			angleX += float64(rand.IntN(max-min) + min)/100
+			angleY += float64(rand.IntN(max-min) + min)/100
+			angleZ += float64(rand.IntN(max-min) + min)/100
+			makeClearScrean(*s)
+
+			w, h := len((*s)[0]), len(*s)
+			for _, edge := range edges {
+				p1 := rotate(vertices[edge[0]], angleX, angleY, angleZ)
+				p2 := rotate(vertices[edge[1]], angleX, angleY, angleZ)
+
+				x1, y1 := pointPerspectiveProjection(p1, w, h)
+				x2, y2 := pointPerspectiveProjection(p2, w, h)
+
+				s.addLine(x1, y1, x2, y2)
+			}
 			
 			if SHOWFPS {
 				s.renderFPS(fpsDisplay*4)
@@ -144,7 +134,7 @@ func (s Screen) renderFPS(fps int) {
 	str := fmt.Sprintf("FPS: %d", fps)
 	for i, char := range str {
 		if i < len(s[0]) {
-			s[1][i] = string(char)
+			s[0][i] = string(char)
 		}
 	}
 }
@@ -162,4 +152,10 @@ func sign(n int) int {
 	if n > 0 { return 1 }
 	if n < 0 { return -1 }
 	return 0
+}
+
+func pointPerspectiveProjection(p Point3D, width, height int) (int, int) {
+	winX := int(float64(width)/2 + p.x*Scale*Aspect)
+	winY := int(float64(height)/2 + p.y*Scale)
+	return winX, winY
 }
