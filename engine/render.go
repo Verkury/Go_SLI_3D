@@ -1,16 +1,17 @@
 package engine
 
 import (
-	"strings"
-	"time"
 	"fmt"
+	"strings"
+	"sync/atomic"
+	"time"
 )
 
 func (s *Scene) Draw() {
 	var out strings.Builder
 
 	if SHOWFPS {
-		s.Scr.renderFPS(s.lastfps)
+		s.Scr.renderFPS(int(atomic.LoadInt64(&s.lastfps)))
 	}
 
 	out.WriteString("\033[H") 
@@ -41,7 +42,7 @@ func updateStream(s *Scene) {
 	for {
 		select {
 		case <-ticker.C:
-			s.lastfps = s.frames
+			atomic.StoreInt64(&s.lastfps, int64(s.frames))
 			s.frames = 0
 		default:		
 			time.Sleep(time.Duration(1000/FPS) * time.Millisecond)

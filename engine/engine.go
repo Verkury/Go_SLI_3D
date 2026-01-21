@@ -22,7 +22,7 @@ type Screen [][]string
 type Scene struct {
 	Scr Screen
 	frames int
-	lastfps int
+	lastfps int64
 }
 
 func getTerminalSize() (int, int){
