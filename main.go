@@ -14,7 +14,10 @@ func main() {
 
 	for {
 		scene.Scr.ClearScrean()
-		scene.Scr.AddCube(-1,-1,-1, 2, angleX, angleY, angleZ)
+
+		var LightSource = engine.Point3D{X: -1, Y: -1, Z: -1}
+
+		scene.Scr.AddCube(-1, -1, -1, 2, angleX, angleY, angleZ, LightSource)
 
 		min := 1
 		max := 6

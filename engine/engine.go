@@ -17,7 +17,10 @@ var Scale = 8.0
 
 const Aspect = 2.0
 
-type Screen [][]string
+type Screen struct {
+	Chars [][]string
+	ZBuffer [][]float64
+}
 
 type Scene struct {
 	Scr Screen
@@ -36,14 +39,17 @@ func getTerminalSize() (int, int){
 func Init() Scene {
 	width, height := getTerminalSize()
 
-	screen := make(Screen, height)
-    for i := range screen {
-        screen[i] = make([]string, width)
+	chars := make([][]string, height)
+	zbuf := make([][]float64, height)
+    for i := range chars {
+        chars[i] = make([]string, width)
+		zbuf[i] = make([]float64, width)
     }
 
-	screen.ClearScrean()
+	s := Screen{Chars: chars, ZBuffer: zbuf}
+	s.ClearScrean()
 	
-	return Scene{screen, 0, 0}
+	return Scene{s, 0, 0}
 }
 
 func (s *Scene) Start() {
@@ -62,7 +68,7 @@ func sign(n int) int {
 }
 
 func pointPerspectiveProjection(p Point3D, width, height int) (int, int) {
-	winX := int(float64(width)/2 + p.x*Scale*Aspect)
-	winY := int(float64(height)/2 + p.y*Scale)
+	winX := int(float64(width)/2 + p.X*Scale*Aspect)
+	winY := int(float64(height)/2 + p.Y*Scale)
 	return winX, winY
 }
